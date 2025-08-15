@@ -1,44 +1,17 @@
-# <h1 align="center"> Forge Template </h1>
+# Solodeity
 
-**Template repository for getting started quickly with Foundry projects**
+Be the Solo Deity (or simply winner) of this Solidity based game by being the highest unique bidder of a number.
 
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+## Rules of the game
 
-## Getting Started
+In solodiety, each player bets on a number between 1 and 10000, each bet is a set price (say $x$ ETH, where $x$ is probably much smaller than 1). After 10000 people have bet their numbers, the winner is the player who has the highest unique bid. If that player bid $y$, they are paid $xy$ ETH.
 
-Click "Use this template" on [GitHub](https://github.com/foundry-rs/forge-template) to create a new repository with this repo as the initial state.
+## Remarks
 
-Or, if your repo already exists, run:
-```sh
-forge init
-forge build
-forge test
-```
+This code is not production grade and may contain bugs.
 
-## Writing your first test
-
-All you need is to `import forge-std/Test.sol` and then inherit it from your test contract. Forge-std's Test contract comes with a pre-instatiated [cheatcodes environment](https://book.getfoundry.sh/cheatcodes/), the `vm`. It also has support for [ds-test](https://book.getfoundry.sh/reference/ds-test.html)-style logs and assertions. Finally, it supports Hardhat's [console.log](https://github.com/brockelmore/forge-std/blob/master/src/console.sol). The logging functionalities require `-vvvv`.
-
-```solidity
-pragma solidity 0.8.10;
-
-import "forge-std/Test.sol";
-
-contract ContractTest is Test {
-    function testExample() public {
-        vm.roll(100);
-        console.log(1);
-        emit log("hi");
-        assertTrue(true);
-    }
-}
-```
+Note that this contract is probably __not legal__ to publish in most jurisdisctions, due to online gambling being heavily regulated. This contract is __only for demonstration purposes__, and a way for me to learn Solidity.
 
 ## Development
 
 This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
-
-## Purpose
-This software is published for educational purposes only.
-The authors do not endorse or encourage its use in any jurisdiction
-where online gambling is illegal or unregulated. Deploy at your own risk.
