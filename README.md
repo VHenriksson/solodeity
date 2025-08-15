@@ -37,3 +37,8 @@ contract ContractTest is Test {
 ## Development
 
 This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
+
+## Purpose
+This software is published for educational purposes only.
+The authors do not endorse or encourage its use in any jurisdiction
+where online gambling is illegal or unregulated. Deploy at your own risk.
