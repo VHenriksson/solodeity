@@ -32,6 +32,12 @@ contract Solodeity is Ownable, ReentrancyGuard {
         uint128 depositWei
     );
 
+    /// @notice Start a new game round with specified parameters
+    /// @dev Only the contract owner can call this function. Previous round must be settled first.
+    /// @param maxNum Maximum number players can commit (1 to maxNum). Also sets max participants to maxNum+1
+    /// @param revealDuration How long players have to reveal after commit phase ends (in seconds)
+    /// @param stakeWei Amount each player pays that goes into the prize pool (in wei)
+    /// @param depositWei Amount each player pays as deposit, refunded on successful reveal (in wei)
     function startRound(
         uint16 maxNum,       
         uint64 revealDuration,
@@ -59,10 +65,16 @@ contract Solodeity is Ownable, ReentrancyGuard {
         emit RoundStarted(maxNum, revealDuration, stakeWei, depositWei);
     }
 
+    /// @notice Get the maximum number for the current round
+    /// @dev Returns 0 if no round has been started yet
+    /// @return maxNum The highest number players can commit to (1 to maxNum)
     function currentMaxNumber() external view returns (uint16 maxNum) {
         return currentRound.maxNumber;
     }
 
+    /// @notice Get the current phase of the game
+    /// @dev Phases progress: no-round → commit → reveal → await-settle → settled
+    /// @return phase Current game phase as a string
     function currentPhase() external view returns (string memory) {
         if (currentRound.maxNumber == 0) return "no-round";
         if (currentRound.commitEndTime == 0) return "commit";
@@ -71,8 +83,12 @@ contract Solodeity is Ownable, ReentrancyGuard {
         return "settled";
     }
 
+    /// @notice Get current and maximum participant counts for the active round
+    /// @dev maxCount is always maxNumber, commit phase ends when currentCount reaches maxCount
+    /// @return currentCount Number of players who have committed so far
+    /// @return maxCount Maximum participants allowed (triggers end of commit phase)
     function currentParticipantCount() external view returns (uint256 currentCount, uint256 maxCount) {
         currentCount = participants.length;
-        maxCount = uint256(currentRound.maxNumber) + 1;
+        maxCount = uint256(currentRound.maxNumber);
     }
 }
