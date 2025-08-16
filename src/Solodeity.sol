@@ -18,12 +18,14 @@ contract Solodeity is Ownable, ReentrancyGuard {
         bool settled;
         uint16 winningNumber;    
         address winner;
-        uint64 commitEndTime;  
+        bool commitmentPhaseEnded;
     }
 
     Round public currentRound;
 
     address[] public participants;
+
+    mapping (address => bytes32) public commits;
 
     event RoundStarted(
         uint16 maxNumber,
@@ -59,10 +61,26 @@ contract Solodeity is Ownable, ReentrancyGuard {
             settled: false,
             winningNumber: 0, // placeholder for no winner yet
             winner: address(0),
-            commitEndTime: 0 // will be set when maxNumber+1 participants reached
+            commitmentPhaseEnded: false
         });
 
         emit RoundStarted(maxNum, revealDuration, stakeWei, depositWei);
+    }
+
+    function commit(bytes32 commitment) external payable nonReentrant {
+
+        participants.push(msg.sender);
+        commits[msg.sender] = commitment;
+
+        // Check if we reached max participants
+        if (participants.length >= uint256(currentRound.maxNumber)) {
+            currentRound.revealEnd = uint64(block.timestamp + currentRound.revealDuration);
+            currentRound.commitmentPhaseEnded = true;
+        }
+    }
+
+    function commitmentFor(address player) external view returns (bytes32) {
+        return commits[player];
     }
 
     /// @notice Get the maximum number for the current round
@@ -77,7 +95,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @return phase Current game phase as a string
     function currentPhase() external view returns (string memory) {
         if (currentRound.maxNumber == 0) return "no-round";
-        if (currentRound.commitEndTime == 0) return "commit";
+        if (!currentRound.commitmentPhaseEnded) return "commit";
         if (block.timestamp <= currentRound.revealEnd) return "reveal";
         if (!currentRound.settled) return "await-settle";
         return "settled";
