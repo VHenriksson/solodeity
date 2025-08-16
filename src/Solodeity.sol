@@ -69,6 +69,10 @@ contract Solodeity is Ownable, ReentrancyGuard {
 
     function commit(bytes32 commitment) external payable nonReentrant {
 
+        require(currentRound.maxNumber > 0 && !currentRound.commitmentPhaseEnded, "No active round");
+        require(commits[msg.sender] == bytes32(0), "Already committed");
+        require(msg.value == currentRound.stakeWei + currentRound.depositWei, "Insufficient payment");
+
         participants.push(msg.sender);
         commits[msg.sender] = commitment;
 
