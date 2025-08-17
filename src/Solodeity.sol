@@ -98,6 +98,12 @@ contract Solodeity is Ownable, ReentrancyGuard {
         // Store the reveal
         reveals[msg.sender] = number; // Store first revealer for this number
         commits[msg.sender] = bytes32(0); // Clear commitment after reveal
+
+        // Pay deposit back
+        uint128 deposit = currentRound.depositWei;
+        require(deposit > 0, "No deposit set");
+        (bool success, ) = msg.sender.call{value: deposit}("");
+        require(success, "Deposit refund failed");
     }
 
     function revealFor(address player) external view returns (uint16) {

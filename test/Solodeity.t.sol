@@ -230,6 +230,62 @@ contract SolodeityTest is Test {
         assertEq(game.revealFor(charlie), 5); // Charlie's reveal should be stored
     }
 
+    function testRetrivingDepositAfterReveal() public {
+        vm.prank(owner);
+        game.startRound(3, 3600, 1 ether, 0.1 ether);
+
+        // Setup commits
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(3, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+
+        uint256 aliceBalance = address(alice).balance;
+        uint256 bobBalance = address(bob).balance;
+        assertEq(aliceBalance, 8.9 ether); // Alice's balance after committing
+        assertEq(bobBalance, 8.9 ether); // Bob's balance after committing
+
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+
+        aliceBalance = address(alice).balance;
+        bobBalance = address(bob).balance;
+
+        assertEq(aliceBalance, 9 ether); // Alice should get back her deposit
+        assertEq(bobBalance, 8.9 ether); // Bob's balance should remain
+
+        vm.prank(bob);
+        vm.expectRevert("Invalid reveal"); // Bob tries to reveal with a number not in his commitment
+        game.reveal(4, bobSalt);
+
+        bobBalance = address(bob).balance;
+        assertEq(bobBalance, 8.9 ether); // Bob should not get deposit back since he didn't reveal correctly
+
+        vm.prank(bob);
+        game.reveal(3, bobSalt);
+
+        bobBalance = address(bob).balance;
+        assertEq(bobBalance, 9 ether); // Bob should get back his deposit after
+
+        vm.prank(alice);
+        vm.expectRevert("Invalid reveal");
+        game.reveal(2, aliceSalt);
+
+        aliceBalance = address(alice).balance;
+        assertEq(aliceBalance, 9 ether); // Alice should not get deposit back again
+
+    }
+
     function testHasNotCommitted() public {
         console.log("Testing hasNotCommitted function");
         vm.prank(owner);
