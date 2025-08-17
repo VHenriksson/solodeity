@@ -11,6 +11,23 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @author Viktor Henriksson
 contract Solodeity is Ownable, ReentrancyGuard {
 
+    /// @notice Custom errors for gas-efficient reverts
+    error InvalidParameters();
+    error PreviousRoundNotSettled();
+    error NoActiveRound();
+    error AlreadyCommitted();
+    error InsufficientPayment();
+    error RevealPhaseNotActive();
+    error InvalidNumber();
+    error InvalidReveal();
+    error NoDepositSet();
+    error DepositRefundFailed();
+    error CannotSettleYet();
+    error AlreadySettled();
+    error PrizeTransferFailed();
+    error LeftoverTransferFailed();
+    error NoRevealYet();
+
     constructor() Ownable(msg.sender) {}
 
     /// @notice Game round configuration and state
@@ -75,11 +92,11 @@ contract Solodeity is Ownable, ReentrancyGuard {
         uint128 stakeWei,
         uint128 depositWei
     ) external onlyOwner {
-        require(revealDuration > 0 && maxNum > 0, "invalid params");
+        if (revealDuration == 0 || maxNum == 0) revert InvalidParameters();
 
         // Prevent overlapping games - previous game must be settled
         // If maxNumber is 0, it means this is the very first game
-        require(currentRound.settled || currentRound.maxNumber == 0, "prev not settled");
+        if (!currentRound.settled && currentRound.maxNumber != 0) revert PreviousRoundNotSettled();
 
         // Clear previous round data
         uint256 participantsLength = participants.length;
@@ -107,9 +124,9 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @param commitment Hash of keccak256(abi.encode(number, salt)) where number is 1-maxNumber
     function commit(bytes32 commitment) external payable nonReentrant {
 
-        require(currentRound.maxNumber > 0 && !currentRound.commitmentPhaseEnded, "No active round");
-        require(commits[msg.sender] == bytes32(0), "Already committed");
-        require(msg.value == currentRound.stakeWei + currentRound.depositWei, "Insufficient payment");
+        if (currentRound.maxNumber == 0 || currentRound.commitmentPhaseEnded) revert NoActiveRound();
+        if (commits[msg.sender] != bytes32(0)) revert AlreadyCommitted();
+        if (msg.value != currentRound.stakeWei + currentRound.depositWei) revert InsufficientPayment();
 
         participants.push(msg.sender);
         commits[msg.sender] = commitment;
@@ -127,12 +144,12 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @param number The number you committed to (1 to maxNumber)
     /// @param salt The salt you used in your commitment
     function reveal(uint16 number, bytes32 salt) external nonReentrant {
-        require(currentRound.commitmentPhaseEnded && currentRound.revealEnd > block.timestamp, "Reveal phase not active");
-        require(number > 0 && number <= currentRound.maxNumber, "Invalid number");
+        if (!currentRound.commitmentPhaseEnded || currentRound.revealEnd <= block.timestamp) revert RevealPhaseNotActive();
+        if (number == 0 || number > currentRound.maxNumber) revert InvalidNumber();
 
         // Verify commitment
         bytes32 expectedCommit = keccak256(abi.encode(number, salt));
-        require(commits[msg.sender] == expectedCommit, "Invalid reveal");
+        if (commits[msg.sender] != expectedCommit) revert InvalidReveal();
 
         // Store the reveal
         reveals[msg.sender] = number; // Store first revealer for this number
@@ -140,16 +157,16 @@ contract Solodeity is Ownable, ReentrancyGuard {
 
         // Pay deposit back
         uint128 deposit = currentRound.depositWei;
-        require(deposit > 0, "No deposit set");
+        if (deposit == 0) revert NoDepositSet();
         (bool success, ) = msg.sender.call{value: deposit}("");
-        require(success, "Deposit refund failed");
+        if (!success) revert DepositRefundFailed();
     }
 
     /// @notice Settle the round and distribute prizes
     /// @dev Can only be called after reveal phase ends. Winner gets stake*winningNumber, owner gets remainder.
     function settle() external nonReentrant {
-        require(currentRound.commitmentPhaseEnded && block.timestamp >= currentRound.revealEnd, "Cannot settle yet");
-        require(!currentRound.settled, "Already settled");
+        if (!currentRound.commitmentPhaseEnded || block.timestamp < currentRound.revealEnd) revert CannotSettleYet();
+        if (currentRound.settled) revert AlreadySettled();
         
         address winner = currentLeader();
 
@@ -158,12 +175,12 @@ contract Solodeity is Ownable, ReentrancyGuard {
             uint256 prize = currentRound.stakeWei * reveals[winner];
             uint256 leftover = (currentRound.stakeWei * participants.length) - prize;
             (bool success, ) = winner.call{value: prize}("");
-            require(success, "Prize transfer failed");
+            if (!success) revert PrizeTransferFailed();
             (success, ) = owner().call{value: leftover}(""); // Owner gets leftover
-            require(success, "Leftover transfer failed");
+            if (!success) revert LeftoverTransferFailed();
         } else {
             (bool success, ) = owner().call{value: currentRound.stakeWei * participants.length}(""); // No winner, owner gets all
-            require(success, "Leftover transfer failed");
+            if (!success) revert LeftoverTransferFailed();
         }
 
         currentRound.settled = true;
@@ -176,7 +193,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @return The number the player revealed
     function revealFor(address player) external view returns (uint16) {
         uint16 playerReveal = reveals[player];
-        require(playerReveal != 0, "No reveal yet");
+        if (playerReveal == 0) revert NoRevealYet();
         return playerReveal;
     }
 

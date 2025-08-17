@@ -68,7 +68,7 @@ contract SolodeityTest is Test {
     function testCommitNoActiveRound() public {
         // Attempt to commit without starting a round
         bytes32 commitment = keccak256(abi.encode(1, "test_salt"));
-        vm.expectRevert("No active round");
+        vm.expectRevert(Solodeity.NoActiveRound.selector);
         game.commit{value: 1.1 ether}(commitment);
 
         vm.prank(owner);
@@ -82,7 +82,7 @@ contract SolodeityTest is Test {
         bytes32 bobCommit = keccak256(abi.encode(2, "bob_salt"));
         vm.deal(bob, 10 ether);
         vm.prank(bob);
-        vm.expectRevert("No active round");
+        vm.expectRevert(Solodeity.NoActiveRound.selector);
         game.commit{value: 1.1 ether}(bobCommit);
 
     }
@@ -112,7 +112,7 @@ contract SolodeityTest is Test {
         vm.prank(charlie);
         
         // Should revert since we're in reveal phase
-        vm.expectRevert("No active round");
+        vm.expectRevert(Solodeity.NoActiveRound.selector);
         game.commit{value: 1.1 ether}(charlieCommit);
     }
 
@@ -129,7 +129,7 @@ contract SolodeityTest is Test {
         // Alice tries to commit again
         bytes32 aliceCommit2 = keccak256(abi.encode(4, "alice_salt"));
         vm.prank(alice);
-        vm.expectRevert("Already committed");
+        vm.expectRevert(Solodeity.AlreadyCommitted.selector);
         game.commit{value: 1.1 ether}(aliceCommit2);
 
         // Bob commits
@@ -150,7 +150,7 @@ contract SolodeityTest is Test {
         bytes32 aliceCommit = keccak256(abi.encode(3, "alice_salt"));
         vm.deal(alice, 0.5 ether);
         vm.prank(alice);
-        vm.expectRevert("Insufficient payment");
+        vm.expectRevert(Solodeity.InsufficientPayment.selector);
         game.commit{value: 0.5 ether}(aliceCommit);
     }
 
@@ -238,14 +238,14 @@ contract SolodeityTest is Test {
         assertEq(game.revealFor(bob), 2); // Bob's reveal should be stored
 
         vm.prank(charlie);
-        vm.expectRevert("Invalid reveal"); // Charlie reveals with a number not in his commitment
+        vm.expectRevert(Solodeity.InvalidReveal.selector); // Charlie reveals with a number not in his commitment
         game.reveal(1, charlieSalt);
         assertEq(game.commitmentFor(charlie), charlieCommit); // Charlie's commitment should remain unchanged
         
         address[] memory noRevealers = game.whoRevealed(1);
         assertEq(noRevealers.length, 0); // No one (successfully) revealed 1
 
-        vm.expectRevert("No reveal yet"); // Charlie's reveal should not be stored
+        vm.expectRevert(Solodeity.NoRevealYet.selector); // Charlie's reveal should not be stored
         game.revealFor(charlie);
 
         vm.prank(charlie);
@@ -280,7 +280,7 @@ contract SolodeityTest is Test {
         game.commit{value: 1.1 ether}(bobCommit);
 
         vm.prank(alice);
-        vm.expectRevert("Invalid number");
+        vm.expectRevert(Solodeity.InvalidNumber.selector);
         game.reveal(3, aliceSalt); 
 
         uint256 aliceBalance = address(alice).balance;
@@ -322,7 +322,7 @@ contract SolodeityTest is Test {
         assertEq(bobBalance, 8.9 ether); // Bob's balance should remain
 
         vm.prank(bob);
-        vm.expectRevert("Invalid reveal"); // Bob tries to reveal with a number not in his commitment
+        vm.expectRevert(Solodeity.InvalidReveal.selector); // Bob tries to reveal with a number not in his commitment
         game.reveal(1, bobSalt);
 
         bobBalance = address(bob).balance;
@@ -335,7 +335,7 @@ contract SolodeityTest is Test {
         assertEq(bobBalance, 9 ether); // Bob should get back his deposit after
 
         vm.prank(alice);
-        vm.expectRevert("Invalid reveal");
+        vm.expectRevert(Solodeity.InvalidReveal.selector);
         game.reveal(1, aliceSalt);
 
         aliceBalance = address(alice).balance;
@@ -365,7 +365,7 @@ contract SolodeityTest is Test {
         assertEq(game.currentPhase(), "reveal");
 
         vm.prank(charlie);
-        vm.expectRevert("Invalid reveal");
+        vm.expectRevert(Solodeity.InvalidReveal.selector);
         game.reveal(2, charlieSalt); // Charlie tries to reveal without committing
 
     }
@@ -382,7 +382,7 @@ contract SolodeityTest is Test {
         game.commit{value: 1.1 ether}(aliceCommit);
 
         // Alice tries to reveal before the reveal phase starts
-        vm.expectRevert("Reveal phase not active");
+        vm.expectRevert(Solodeity.RevealPhaseNotActive.selector);
         vm.prank(alice);
         game.reveal(2, aliceSalt);
     }
@@ -412,7 +412,7 @@ contract SolodeityTest is Test {
         vm.warp(block.timestamp + 3600);
 
         // Alice tries to reveal after the reveal phase has ended
-        vm.expectRevert("Reveal phase not active");
+        vm.expectRevert(Solodeity.RevealPhaseNotActive.selector);
         vm.prank(alice);
         game.reveal(1, aliceSalt);
     }   
@@ -558,7 +558,7 @@ contract SolodeityTest is Test {
         game.reveal(2, aliceSalt);
 
         // Bob tries to settle before revealing
-        vm.expectRevert("Cannot settle yet");
+        vm.expectRevert(Solodeity.CannotSettleYet.selector);
         vm.prank(bob);
         game.settle();
     }   
@@ -598,7 +598,7 @@ contract SolodeityTest is Test {
         game.settle();
 
         vm.prank(bob);
-        vm.expectRevert("Already settled");
+        vm.expectRevert(Solodeity.AlreadySettled.selector);
         game.settle(); // Bob tries to settle again
 
     }
@@ -646,10 +646,10 @@ contract SolodeityTest is Test {
         assertEq(game.commitmentFor(alice), bytes32(0)); // Alice's commitment should be cleared
         assertEq(game.commitmentFor(bob), bytes32(0)); // Bob's commitment should be cleared
         
-        vm.expectRevert("No reveal yet"); // Alice's reveal should be cleared
+        vm.expectRevert(Solodeity.NoRevealYet.selector); // Alice's reveal should be cleared
         game.revealFor(alice);
         
-        vm.expectRevert("No reveal yet"); // Bob's reveal should be cleared
+        vm.expectRevert(Solodeity.NoRevealYet.selector); // Bob's reveal should be cleared
         game.revealFor(bob);
 
         (participantCount,) = game.currentParticipantCount();
