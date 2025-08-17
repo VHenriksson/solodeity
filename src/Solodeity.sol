@@ -83,7 +83,8 @@ contract Solodeity is Ownable, ReentrancyGuard {
         require(currentRound.settled || currentRound.maxNumber == 0, "prev not settled");
 
         // Clear previous round data
-        for (uint256 i = 0; i < participants.length; i++) {
+        uint256 participantsLength = participants.length;
+        for (uint256 i = 0; i < participantsLength; i++) {
             delete commits[participants[i]];
             delete reveals[participants[i]];
         }
@@ -187,7 +188,8 @@ contract Solodeity is Ownable, ReentrancyGuard {
     function whoRevealed(uint16 number) external view returns (address[] memory) {
         // First pass: count how many revealed this number
         uint256 count = 0;
-        for (uint i = 0; i < participants.length; i++) {
+        uint256 participantsLength = participants.length;
+        for (uint i = 0; i < participantsLength; i++) {
             if (reveals[participants[i]] == number) {
                 count++;
             }
@@ -198,7 +200,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
         
         // Second pass: fill the array
         uint256 index = 0;
-        for (uint i = 0; i < participants.length; i++) {
+        for (uint i = 0; i < participantsLength; i++) {
             if (reveals[participants[i]] == number) {
                 revealersOfNumber[index] = participants[i];
                 index++;
@@ -301,8 +303,9 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @return Address of current leader, or address(0) if no unique leader exists
     function currentLeader() public view returns (address) {
 
-        PlayerAndBet[] memory sortedReveals = new PlayerAndBet[](participants.length);
-        for (uint256 i = 0; i < participants.length; i++) {
+        uint256 participantsLength = participants.length;
+        PlayerAndBet[] memory sortedReveals = new PlayerAndBet[](participantsLength);
+        for (uint256 i = 0; i < participantsLength; i++) {
             sortedReveals[i] = PlayerAndBet({
                 player: participants[i],
                 bet: reveals[participants[i]]
