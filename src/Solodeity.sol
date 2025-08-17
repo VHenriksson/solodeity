@@ -40,6 +40,8 @@ contract Solodeity is Ownable, ReentrancyGuard {
         uint128 depositWei
     );
 
+    event CommitPhaseEnded(uint64 revealEnd);
+
     /// @notice Start a new game round with specified parameters
     /// @dev Only the contract owner can call this function. Previous round must be settled first.
     /// @param maxNum Maximum number players can commit (1 to maxNum). Also sets max participants to maxNum+1
@@ -86,6 +88,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
         if (participants.length >= uint256(currentRound.maxNumber)) {
             currentRound.revealEnd = uint64(block.timestamp + currentRound.revealDuration);
             currentRound.commitmentPhaseEnded = true;
+            emit CommitPhaseEnded(currentRound.revealEnd);
         }
     }
 
