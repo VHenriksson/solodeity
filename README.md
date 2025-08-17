@@ -10,7 +10,7 @@ In solodeity, each player bets on a number between 1 and a maximal number $y$, e
 
 This code is not production grade and may contain bugs. The code is still in development.
 
-Note that this contract is probably __not legal__ to publish in most jurisdisctions, due to online gambling being heavily regulated. This contract is __only for demonstration purposes__, and a way for me to learn Solidity.
+Note that this contract is probably __not legal__ to publish in most jurisdisctions, due to online gambling (rightfully) being heavily regulated. This contract is __only for demonstration purposes__, and a way for me to learn Solidity.
 
 ## Development
 
