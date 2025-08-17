@@ -201,6 +201,35 @@ contract SolodeityTest is Test {
         assertEq(game.revealFor(charlie), 5); // Charlie's reveal should be stored
     }
 
+    function testHasNotCommitted() public {
+        console.log("Testing hasNotCommitted function");
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 charlieSalt = bytes32("charlie_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(5, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(3, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        console.log("Got to reveal phase");
+        assertEq(game.currentPhase(), "reveal");
+
+        vm.prank(charlie);
+        vm.expectRevert("Invalid reveal");
+        game.reveal(5, charlieSalt); // Charlie tries to reveal without committing
+
+    }
+
     function testMergeSort() public view {
         // Test the merge sort function
         Solodeity.PlayerAndBet[] memory arr = new Solodeity.PlayerAndBet[](5);
