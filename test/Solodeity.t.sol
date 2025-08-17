@@ -602,4 +602,61 @@ contract SolodeityTest is Test {
         game.settle(); // Bob tries to settle again
 
     }
+
+    function testStateCleanupOnNewRound() public {
+        // First round
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(1, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        // Players commit in first round
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        // Players reveal in first round
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+        vm.prank(bob);
+        game.reveal(1, bobSalt);
+
+        // Verify data exists from first round
+        assertEq(game.revealFor(alice), 2);
+        assertEq(game.revealFor(bob), 1);
+        (uint256 participantCount,) = game.currentParticipantCount();
+        assertEq(participantCount, 2);
+
+        // Fast forward and settle first round
+        vm.warp(block.timestamp + 3600 + 1);
+        game.settle();
+
+        // Start second round - this should clear all previous data
+        vm.prank(owner);
+        game.startRound(3, 7200, 2 ether, 0.2 ether);
+
+        // Verify previous round data is cleared
+        assertEq(game.commitmentFor(alice), bytes32(0)); // Alice's commitment should be cleared
+        assertEq(game.commitmentFor(bob), bytes32(0)); // Bob's commitment should be cleared
+        
+        vm.expectRevert("No reveal yet"); // Alice's reveal should be cleared
+        game.revealFor(alice);
+        
+        vm.expectRevert("No reveal yet"); // Bob's reveal should be cleared
+        game.revealFor(bob);
+
+        (participantCount,) = game.currentParticipantCount();
+        assertEq(participantCount, 0); // Participants list should be empty
+
+        // Verify new round parameters are set correctly
+        assertEq(game.currentMaxNumber(), 3);
+        assertEq(game.currentPhase(), "commit");
+    }
 }

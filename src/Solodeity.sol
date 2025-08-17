@@ -82,6 +82,13 @@ contract Solodeity is Ownable, ReentrancyGuard {
         // If maxNumber is 0, it means this is the very first game
         require(currentRound.settled || currentRound.maxNumber == 0, "prev not settled");
 
+        // Clear previous round data
+        for (uint256 i = 0; i < participants.length; i++) {
+            delete commits[participants[i]];
+            delete reveals[participants[i]];
+        }
+        delete participants;
+
         currentRound = Round({
             maxNumber: maxNum,
             revealDuration: revealDuration,
@@ -159,8 +166,6 @@ contract Solodeity is Ownable, ReentrancyGuard {
             require(success, "Leftover transfer failed");
         }
 
-        // Reset participants for next round
-        delete participants;
         currentRound.settled = true;
 
     }
