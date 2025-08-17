@@ -223,7 +223,7 @@ contract SolodeityTest is Test {
         address[] memory expectedRevealers = new address[](1);
         expectedRevealers[0] = alice;
         assertEq(game.whoRevealed(3), expectedRevealers); // Alice is the first to reveal 3
-        
+
         assertEq(game.currentLeader(), alice); // Alice should be the leader
 
         vm.prank(bob);
@@ -234,7 +234,7 @@ contract SolodeityTest is Test {
         address[] memory expectedBobRevealers = new address[](1);
         expectedBobRevealers[0] = bob;
         assertEq(game.whoRevealed(2), expectedBobRevealers); // Bob is the first to reveal 2
-        
+
         assertEq(game.revealFor(bob), 2); // Bob's reveal should be stored
 
         vm.prank(charlie);
@@ -244,7 +244,7 @@ contract SolodeityTest is Test {
         
         address[] memory noRevealers = game.whoRevealed(1);
         assertEq(noRevealers.length, 0); // No one (successfully) revealed 1
-        
+
         vm.expectRevert("No reveal yet"); // Charlie's reveal should not be stored
         game.revealFor(charlie);
 
@@ -257,7 +257,7 @@ contract SolodeityTest is Test {
         expectedMultipleRevealers[0] = alice;
         expectedMultipleRevealers[1] = charlie;
         assertEq(game.whoRevealed(3), expectedMultipleRevealers); // Both Alice and Charlie revealed 3
-        
+
         assertEq(game.revealFor(charlie), 3); // Charlie's reveal should be stored
     }
 
@@ -470,6 +470,8 @@ contract SolodeityTest is Test {
         vm.prank(charlie);
         game.reveal(3, charlieSalt);
 
+        vm.warp(block.timestamp + 3600); // Fast forward to end of reveal phase
+
         // Settle phase
         vm.prank(bob);
         game.settle();
@@ -514,6 +516,7 @@ contract SolodeityTest is Test {
         vm.prank(bob);
         game.reveal(2, bobSalt);
 
+        vm.warp(block.timestamp + 3600); // Fast forward to end of reveal phase
         // Settle phase
         vm.prank(owner);
         game.settle();
@@ -531,4 +534,72 @@ contract SolodeityTest is Test {
         assertEq(ownerBalance, 2 ether); // Owner receives leftover
     }
 
+    function testTriesToSettleBeforeRevealPhaseEnded() public {
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        // Commit phase
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(3, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        // Alice reveals
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+
+        // Bob tries to settle before revealing
+        vm.expectRevert("Cannot settle yet");
+        vm.prank(bob);
+        game.settle();
+    }   
+
+    function testTriesToDoubleSettle() public {
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        // Commit phase
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(1, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(2, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+
+        // Alice reveals
+        vm.prank(alice);
+        game.reveal(1, aliceSalt);
+
+        // Bob reveals 
+        vm.prank(bob);
+        game.reveal(2, bobSalt);
+
+        vm.warp(block.timestamp + 3600); // Fast forward to end of reveal phase
+
+        // Settle phase
+        vm.prank(owner);
+        game.settle();
+
+        vm.prank(bob);
+        vm.expectRevert("Already settled");
+        game.settle(); // Bob tries to settle again
+
+    }
 }

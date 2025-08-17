@@ -17,8 +17,6 @@ contract Solodeity is Ownable, ReentrancyGuard {
         uint128 stakeWei;        
         uint128 depositWei;      
         bool settled;
-        uint16 winningNumber;    
-        address winner;
         bool commitmentPhaseEnded;
     }
     struct PlayerAndBet {
@@ -67,8 +65,6 @@ contract Solodeity is Ownable, ReentrancyGuard {
             stakeWei: stakeWei,
             depositWei: depositWei,
             settled: false,
-            winningNumber: 0, // placeholder for no winner yet
-            winner: address(0),
             commitmentPhaseEnded: false
         });
 
@@ -112,6 +108,8 @@ contract Solodeity is Ownable, ReentrancyGuard {
     }
 
     function settle() external nonReentrant {
+        require(currentRound.commitmentPhaseEnded && block.timestamp >= currentRound.revealEnd, "Cannot settle yet");
+        require(!currentRound.settled, "Already settled");
         
         address winner = this.currentLeader();
 
@@ -130,6 +128,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
 
         // Reset participants for next round
         delete participants;
+        currentRound.settled = true;
 
     }
 
