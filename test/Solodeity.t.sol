@@ -188,7 +188,7 @@ contract SolodeityTest is Test {
         vm.expectRevert("No reveal yet"); // Charlie's reveal should not be stored
         game.revealFor(charlie);
 
-        vm.prank(charlie);  // Added missing prank!
+        vm.prank(charlie);
         game.reveal(5, charlieSalt);
         assertEq(game.commitmentFor(charlie), bytes32(0)); // Charlie's commitment should be cleared
         assertEq(game.currentLeader(), bob); // Now bob leads, since he has a unique number
