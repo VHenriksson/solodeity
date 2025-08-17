@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "forge-std/console.sol";
 
 contract Solodeity is Ownable, ReentrancyGuard {
 
@@ -20,12 +21,17 @@ contract Solodeity is Ownable, ReentrancyGuard {
         address winner;
         bool commitmentPhaseEnded;
     }
+    struct PlayerAndBet {
+        address player;
+        uint16 bet;
+    }
 
     Round public currentRound;
 
     address[] public participants;
 
     mapping (address => bytes32) public commits;
+    mapping (address => uint16) public reveals;
 
     event RoundStarted(
         uint16 maxNumber,
@@ -83,6 +89,50 @@ contract Solodeity is Ownable, ReentrancyGuard {
         }
     }
 
+    function reveal(uint16 number, bytes32 salt) external nonReentrant {
+
+        // Verify commitment
+        bytes32 expectedCommit = keccak256(abi.encode(number, salt));
+        console.log("Player:", msg.sender);
+        console.log("Number:", number);
+        console.logBytes32(salt);
+        require(commits[msg.sender] == expectedCommit, "Invalid reveal");
+
+        // Store the reveal
+        reveals[msg.sender] = number; // Store first revealer for this number
+        commits[msg.sender] = bytes32(0); // Clear commitment after reveal
+    }
+
+    function revealFor(address player) external view returns (uint16) {
+        uint16 playerReveal = reveals[player];
+        require(playerReveal != 0, "No reveal yet");
+        return playerReveal;
+    }
+
+    function whoRevealed(uint16 number) external view returns (address[] memory) {
+        // First pass: count how many revealed this number
+        uint256 count = 0;
+        for (uint i = 0; i < participants.length; i++) {
+            if (reveals[participants[i]] == number) {
+                count++;
+            }
+        }
+        
+        // Create array with exact size needed
+        address[] memory revealersOfNumber = new address[](count);
+        
+        // Second pass: fill the array
+        uint256 index = 0;
+        for (uint i = 0; i < participants.length; i++) {
+            if (reveals[participants[i]] == number) {
+                revealersOfNumber[index] = participants[i];
+                index++;
+            }
+        }
+        
+        return revealersOfNumber;
+    }
+
     function commitmentFor(address player) external view returns (bytes32) {
         return commits[player];
     }
@@ -113,4 +163,79 @@ contract Solodeity is Ownable, ReentrancyGuard {
         currentCount = participants.length;
         maxCount = uint256(currentRound.maxNumber);
     }
+
+    function mergeSort(PlayerAndBet[] memory arr) public pure returns (PlayerAndBet[] memory) {
+        if (arr.length <= 1) return arr;  // Base case: 0 or 1 element
+
+        uint256 mid = arr.length / 2;
+        PlayerAndBet[] memory left = new PlayerAndBet[](mid);
+        PlayerAndBet[] memory right = new PlayerAndBet[](arr.length - mid);
+
+        for (uint256 i = 0; i < mid; i++) {
+            left[i] = arr[i];
+        }
+        for (uint256 i = mid; i < arr.length; i++) {
+            right[i - mid] = arr[i];
+        }
+
+        left = mergeSort(left);
+        right = mergeSort(right);
+
+        return merge(left, right);
+    }
+
+    function merge(PlayerAndBet[] memory left, PlayerAndBet[] memory right) internal pure returns (PlayerAndBet[] memory) {
+        PlayerAndBet[] memory merged = new PlayerAndBet[](left.length + right.length);
+        uint256 i = 0;
+        uint256 j = 0;
+        uint256 k = 0;
+        while (i < left.length && j < right.length) {
+            if (left[i].bet >= right[j].bet) {  // Changed to >= for descending order
+                merged[k++] = left[i++];
+            } else {
+                merged[k++] = right[j++];
+            }
+        }
+
+        // Copy any remaining elements from either half
+        while (i < left.length) {
+            merged[k++] = left[i++];
+        }
+        while (j < right.length) {
+            merged[k++] = right[j++];
+        }
+
+        return merged;
+    }
+
+    function currentLeader() external view returns (address) {
+
+        PlayerAndBet[] memory sortedReveals = new PlayerAndBet[](participants.length);
+        for (uint256 i = 0; i < participants.length; i++) {
+            sortedReveals[i] = PlayerAndBet({
+                player: participants[i],
+                bet: reveals[participants[i]]
+            });
+        }
+
+        sortedReveals = mergeSort(sortedReveals);
+
+        // Find the leader (the first player with a unique highest bet)
+        uint256 currentBetIndex = 0;
+        while (currentBetIndex < sortedReveals.length) {
+            uint256 i = currentBetIndex + 1;
+            uint256 bet = sortedReveals[currentBetIndex].bet;
+            while (i < sortedReveals.length && sortedReveals[i].bet == bet) {
+                i++;
+            }
+            if (i == currentBetIndex + 1) {
+                // Found a unique highest bet
+                return sortedReveals[currentBetIndex].player;
+            }
+            currentBetIndex = i; // Move to next possibly unique bet
+        }
+
+        return address(0); // No unique leader found
+    }
+
 }
