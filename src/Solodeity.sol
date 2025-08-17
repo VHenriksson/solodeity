@@ -151,7 +151,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
         require(currentRound.commitmentPhaseEnded && block.timestamp >= currentRound.revealEnd, "Cannot settle yet");
         require(!currentRound.settled, "Already settled");
         
-        address winner = this.currentLeader();
+        address winner = currentLeader();
 
         // Transfer prize to winner if exists
         if (winner != address(0)) {
@@ -299,7 +299,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
     /// @notice Get the current leader (player with highest unique revealed number)
     /// @dev Uses merge sort to find the highest unique bet among revealed players
     /// @return Address of current leader, or address(0) if no unique leader exists
-    function currentLeader() external view returns (address) {
+    function currentLeader() public view returns (address) {
 
         PlayerAndBet[] memory sortedReveals = new PlayerAndBet[](participants.length);
         for (uint256 i = 0; i < participants.length; i++) {
