@@ -315,6 +315,53 @@ contract SolodeityTest is Test {
 
     }
 
+    function testRevealBeforeRevealPhase() public {
+        vm.prank(owner);
+        game.startRound(3, 3600, 1 ether, 0.1 ether);
+
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+
+        // Alice tries to reveal before the reveal phase starts
+        vm.expectRevert("Reveal phase not active");
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+    }
+
+    function testRevealAfterRevealPhase() public {
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(3, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        vm.prank(bob);
+        game.reveal(3, bobSalt); // Bobs reveal should succeed
+        assertEq(game.revealFor(bob), 3);
+
+        // Fast forward to reveal phase
+        vm.warp(block.timestamp + 3600);
+
+        // Alice tries to reveal after the reveal phase has ended
+        vm.expectRevert("Reveal phase not active");
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+    }
+
     function testMergeSort() public view {
         // Test the merge sort function
         Solodeity.PlayerAndBet[] memory arr = new Solodeity.PlayerAndBet[](5);

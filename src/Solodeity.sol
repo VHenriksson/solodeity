@@ -90,6 +90,7 @@ contract Solodeity is Ownable, ReentrancyGuard {
     }
 
     function reveal(uint16 number, bytes32 salt) external nonReentrant {
+        require(currentRound.commitmentPhaseEnded && currentRound.revealEnd > block.timestamp, "Reveal phase not active");
 
         // Verify commitment
         bytes32 expectedCommit = keccak256(abi.encode(number, salt));
