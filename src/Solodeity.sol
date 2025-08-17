@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "forge-std/console.sol";
 
 /// @title Solodeity - Highest Unique Number Commit-Reveal Game
 /// @notice A blockchain game where players commit to numbers and the highest unique number wins
