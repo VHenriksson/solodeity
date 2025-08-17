@@ -263,7 +263,7 @@ contract SolodeityTest is Test {
 
     function testRetrivingDepositAfterReveal() public {
         vm.prank(owner);
-        game.startRound(3, 3600, 1 ether, 0.1 ether);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
 
         // Setup commits
         bytes32 aliceSalt = bytes32("alice_salt");
@@ -391,7 +391,7 @@ contract SolodeityTest is Test {
         vm.expectRevert("Reveal phase not active");
         vm.prank(alice);
         game.reveal(2, aliceSalt);
-    }
+    }   
 
     function testMergeSort() public view {
         // Test the merge sort function
@@ -410,4 +410,101 @@ contract SolodeityTest is Test {
         assertEq(arr[3].bet, 2);
         assertEq(arr[4].bet, 1);
     }
+
+    function testSettlement() public {
+        vm.prank(owner);
+        game.startRound(3, 3600, 1 ether, 0.1 ether);
+
+        // Commit phase
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 charlieSalt = bytes32("charlie_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(3, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(2, bobSalt));
+        bytes32 charlieCommit = keccak256(abi.encode(3, charlieSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+        vm.deal(charlie, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        vm.prank(charlie);
+        game.commit{value: 1.1 ether}(charlieCommit);
+
+        // Reveal phase
+        vm.prank(alice);
+        game.reveal(3, aliceSalt);
+
+        vm.prank(bob);
+        game.reveal(2, bobSalt);
+
+        vm.prank(charlie);
+        game.reveal(3, charlieSalt);
+
+        // Settle phase
+        vm.prank(bob);
+        game.settle();
+
+        // Assert that Bob has now received the prize
+        uint256 bobBalance = address(bob).balance;
+        assertEq(bobBalance, 11 ether);
+
+        // Assert that Alice and Charlie have lost their stakes
+        uint256 aliceBalance = address(alice).balance;
+        uint256 charlieBalance = address(charlie).balance;
+        assertEq(aliceBalance, 9 ether); // Alice staked 1 ether
+        assertEq(charlieBalance, 9 ether); // Charlie staked 1 ether
+        
+        uint256 ownerBalance = address(owner).balance;
+        assertEq(ownerBalance, 1 ether); // Owner receives leftover
+    }
+
+    function testNoWinner() public {
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        // Commit phase
+        bytes32 aliceSalt = bytes32("alice_salt");
+        bytes32 bobSalt = bytes32("bob_salt");
+        bytes32 aliceCommit = keccak256(abi.encode(2, aliceSalt));
+        bytes32 bobCommit = keccak256(abi.encode(2, bobSalt));
+
+        vm.deal(alice, 10 ether);
+        vm.deal(bob, 10 ether);
+
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+        
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        // Reveal phase
+        vm.prank(alice);
+        game.reveal(2, aliceSalt);
+
+        vm.prank(bob);
+        game.reveal(2, bobSalt);
+
+        // Settle phase
+        vm.prank(owner);
+        game.settle();
+
+        // Assert that no winner was declared
+        address winner = game.currentLeader();
+        assertEq(winner, address(0)); // No winner should be declared
+
+        uint256 aliceBalance = address(alice).balance;
+        uint256 bobBalance = address(bob).balance;
+        
+        assertEq(aliceBalance, 9 ether); // Alice staked 1 ether
+        assertEq(bobBalance, 9 ether); // Bob staked 1 ether
+        uint256 ownerBalance = address(owner).balance;
+        assertEq(ownerBalance, 2 ether); // Owner receives leftover
+    }
+
 }

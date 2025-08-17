@@ -110,6 +110,28 @@ contract Solodeity is Ownable, ReentrancyGuard {
         require(success, "Deposit refund failed");
     }
 
+    function settle() external nonReentrant {
+        
+        address winner = this.currentLeader();
+
+        // Transfer prize to winner if exists
+        if (winner != address(0)) {
+            uint256 prize = currentRound.stakeWei * reveals[winner];
+            uint256 leftover = (currentRound.stakeWei * participants.length) - prize;
+            (bool success, ) = winner.call{value: prize}("");
+            require(success, "Prize transfer failed");
+            (success, ) = owner().call{value: leftover}(""); // Owner gets leftover
+            require(success, "Leftover transfer failed");
+        } else {
+            (bool success, ) = owner().call{value: currentRound.stakeWei * participants.length}(""); // No winner, owner gets all
+            require(success, "Leftover transfer failed");
+        }
+
+        // Reset participants for next round
+        delete participants;
+
+    }
+
     function revealFor(address player) external view returns (uint16) {
         uint16 playerReveal = reveals[player];
         require(playerReveal != 0, "No reveal yet");
