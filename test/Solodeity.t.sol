@@ -85,6 +85,35 @@ contract SolodeityTest is Test {
 
     }
 
+    function testCommitInRevealPhase() public {
+        vm.prank(owner);
+        game.startRound(2, 3600, 1 ether, 0.1 ether);
+
+        // Alice commits
+        bytes32 aliceCommit = keccak256(abi.encode(1, "alice_salt"));
+        vm.deal(alice, 10 ether);
+        vm.prank(alice);
+        game.commit{value: 1.1 ether}(aliceCommit);
+
+        // Bob commits
+        bytes32 bobCommit = keccak256(abi.encode(2, "bob_salt"));
+        vm.deal(bob, 10 ether);
+        vm.prank(bob);
+        game.commit{value: 1.1 ether}(bobCommit);
+
+        // Now in reveal phase
+        assertEq(game.currentPhase(), "reveal");
+
+        // Charlie tries to commit
+        bytes32 charlieCommit = keccak256(abi.encode(3, "charlie_salt"));
+        vm.deal(charlie, 10 ether);
+        vm.prank(charlie);
+        
+        // Should revert since we're in reveal phase
+        vm.expectRevert("No active round");
+        game.commit{value: 1.1 ether}(charlieCommit);
+    }
+
     function testDoubleCommit() public {
         vm.prank(owner);
         game.startRound(5, 3600, 1 ether, 0.1 ether);
