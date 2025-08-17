@@ -93,9 +93,6 @@ contract Solodeity is Ownable, ReentrancyGuard {
 
         // Verify commitment
         bytes32 expectedCommit = keccak256(abi.encode(number, salt));
-        console.log("Player:", msg.sender);
-        console.log("Number:", number);
-        console.logBytes32(salt);
         require(commits[msg.sender] == expectedCommit, "Invalid reveal");
 
         // Store the reveal
